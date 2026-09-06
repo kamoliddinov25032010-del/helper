@@ -69,7 +69,7 @@ async def global_error_handler(event):
 async def start(message: Message):
     user_id = message.from_user.id
 
-    if user_id == ADMIN_ID:
+    if user_id in ADMIN_IDS:
         await message.answer("👨‍💻 Admin panel", reply_markup=admin_keyboard)
         return
 
@@ -82,13 +82,17 @@ async def start(message: Message):
     username = f"@{message.from_user.username}" if message.from_user.username else "yo'q"
 
     try:
-        await bot.send_message(
-            ADMIN_ID,
-            f"🔔 Foydalanuvchi botga kirdi (/start bosdi)\n\n"
-            f"👤 Ism: {message.from_user.full_name}\n"
-            f"🔗 Username: {username}\n"
-            f"🆔 Telegram ID: {user_id}"
-        )
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_message(
+                    admin_id,
+                    f"🔔 Foydalanuvchi botga kirdi (/start bosdi)\n\n"
+                    f"👤 Ism: {message.from_user.full_name}\n"
+                    f"🔗 Username: {username}\n"
+                    f"🆔 Telegram ID: {user_id}"
+                )
+            except Exception as e:
+                print(f"⚠️ Adminga xabar yuborilmadi ({admin_id}): {e}")
     except Exception as e:
         print(f"⚠️ Adminga xabar yuborilmadi: {e}")
 
@@ -103,7 +107,7 @@ async def start(message: Message):
 async def add_button(message: Message):
     global waiting_id
 
-    if message.from_user.id != ADMIN_ID:
+    if message.from_user.id not in ADMIN_IDS:
         return
 
     await message.answer("Telegram ID yuboring:")
@@ -114,7 +118,7 @@ async def add_button(message: Message):
 async def delete_button(message: Message):
     global waiting_delete_id
 
-    if message.from_user.id != ADMIN_ID:
+    if message.from_user.id not in ADMIN_IDS:
         return
 
     await message.answer("O'chirmoqchi bo'lgan Telegram ID yuboring:")
@@ -137,15 +141,19 @@ async def confirm(message: Message):
         username = f"@{message.from_user.username}" if message.from_user.username else "yo'q"
 
         try:
-            await bot.send_message(
-                ADMIN_ID,
-                f"✅ Yangi tasdiq!\n\n"
-                f"👤 Ism: {message.from_user.full_name}\n"
-                f"🔗 Username: {username}\n"
-                f"🆔 Telegram ID: {user_id}\n"
-                f"📅 Sana: {now.strftime('%d.%m.%Y')}\n"
-                f"⏰ Vaqt: {now.strftime('%H:%M')}"
-            )
+            for admin_id in ADMIN_IDS:
+                try:
+                    await bot.send_message(
+                        admin_id,
+                        f"✅ Yangi tasdiq!\n\n"
+                        f"👤 Ism: {message.from_user.full_name}\n"
+                        f"🔗 Username: {username}\n"
+                        f"🆔 Telegram ID: {user_id}\n"
+                        f"📅 Sana: {now.strftime('%d.%m.%Y')}\n"
+                        f"⏰ Vaqt: {now.strftime('%H:%M')}"
+                    )
+                except Exception as e:
+                    print(f"⚠️ Adminga xabar yuborilmadi ({admin_id}): {e}")
         except Exception as e:
             print(f"⚠️ Adminga xabar yuborilmadi: {e}")
     else:
@@ -154,7 +162,7 @@ async def confirm(message: Message):
 
 @dp.message(F.text == "📋 Bugungi ro'yxat")
 async def today(message: Message):
-    if message.from_user.id != ADMIN_ID:
+    if message.from_user.id not in ADMIN_IDS:
         return
 
     users = get_all_users()
@@ -251,18 +259,22 @@ async def voice_decision(callback: CallbackQuery):
         username = f"@{callback.from_user.username}" if callback.from_user.username else "yo'q"
         now = datetime.now()
 
-        await bot.send_voice(
-            ADMIN_ID,
-            file_id,
-            caption=(
-                f"🎤 Yangi ovozli xabar!\n\n"
-                f"👤 Ism: {callback.from_user.full_name}\n"
-                f"🔗 Username: {username}\n"
-                f"🆔 Telegram ID: {user_id}\n"
-                f"📅 Sana: {now.strftime('%d.%m.%Y')}\n"
-                f"⏰ Vaqt: {now.strftime('%H:%M')}"
-            )
-        )
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_voice(
+                    admin_id,
+                    file_id,
+                    caption=(
+                        f"🎤 Yangi ovozli xabar!\n\n"
+                        f"👤 Ism: {callback.from_user.full_name}\n"
+                        f"🔗 Username: {username}\n"
+                        f"🆔 Telegram ID: {user_id}\n"
+                        f"📅 Sana: {now.strftime('%d.%m.%Y')}\n"
+                        f"⏰ Vaqt: {now.strftime('%H:%M')}"
+                    )
+                )
+            except Exception as e:
+                print(f"⚠️ Ovoz adminga yuborilmadi ({admin_id}): {e}")
 
         sent_count = increment_voice_count(user_id)
         clear_pending_voice(user_id)
@@ -281,7 +293,7 @@ async def voice_decision(callback: CallbackQuery):
 async def messages(message: Message):
     global waiting_id, waiting_name, waiting_delete_id, pending_user_id
 
-    if message.from_user.id != ADMIN_ID:
+    if message.from_user.id not in ADMIN_IDS:
         return
 
     if waiting_id:
