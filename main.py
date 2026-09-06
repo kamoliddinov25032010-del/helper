@@ -8,7 +8,7 @@ from aiogram.types import (
     InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 )
 
-from config import BOT_TOKEN, ADMIN_ID
+from config import BOT_TOKEN, ADMIN_IDS
 from db import create_table, add_attendance, get_today
 from users import add_user, delete_user, is_registered, get_all_users, update_name
 from voice_limit import (
