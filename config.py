@@ -4,7 +4,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = 6857995319
+ADMIN_IDS = [
+    6857995319,
+    7695822564
+]
 
 # Railway'da Volume ulanganda shu papkaga yozadi (masalan "/data")
 # Volume bo'lmasa, joriy papkada saqlaydi (lokal ishlatish uchun)
