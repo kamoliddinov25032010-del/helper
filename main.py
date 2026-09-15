@@ -10,7 +10,7 @@ from aiogram.types import (
 
 from config import BOT_TOKEN, ADMIN_IDS
 from db import create_table, add_attendance, get_today
-from users import add_user, delete_user, is_registered, get_all_users, update_name
+from users import add_user, delete_user, is_registered, get_all_users_sorted
 from voice_limit import (
     can_send_voice,
     increment_voice_count,
@@ -27,8 +27,10 @@ dp = Dispatcher()
 
 waiting_id = False
 waiting_name = False
+waiting_order = False
 waiting_delete_id = False
 pending_user_id = None
+pending_name = None
 
 
 admin_keyboard = ReplyKeyboardMarkup(
@@ -60,7 +62,6 @@ def voice_decision_keyboard():
 
 @dp.errors()
 async def global_error_handler(event):
-    # Har qanday kutilmagan xatoni faqat konsolga yozadi, botni to'xtatmaydi
     print(f"⚠️ Kutilmagan xato: {event.exception}")
     return True
 
@@ -76,8 +77,6 @@ async def start(message: Message):
     if not is_registered(user_id):
         await message.answer("❌ Siz hali ro'yxatdan o'tmagansiz.")
         return
-
-    update_name(user_id, message.from_user.full_name)
 
     username = f"@{message.from_user.username}" if message.from_user.username else "yo'q"
 
@@ -165,17 +164,18 @@ async def today(message: Message):
     if message.from_user.id not in ADMIN_IDS:
         return
 
-    users = get_all_users()
+    users_sorted = get_all_users_sorted()
     today_data = get_today()
 
     checked = [telegram_id for telegram_id, time in today_data]
 
     text = "📋 Bugungi ro'yxat:\n\n"
 
-    for user_id, info in users.items():
+    for user_id, info in users_sorted:
         name = info["name"]
+        order = info.get("order", "-")
         status = "🟢 Tasdiqlagan" if int(user_id) in checked else "🔴 Tasdiqlamagan"
-        text += f"👤 {name}\n🆔 {user_id}\n{status}\n\n"
+        text += f"{order}. 👤 {name}\n🆔 {user_id}\n{status}\n\n"
 
     await message.answer(text)
 
@@ -199,7 +199,6 @@ async def voice_message(message: Message):
             f"ℹ️ Diqqat: kuniga faqat {VOICE_LIMIT} martagacha ovozli xabar yuborishingiz mumkin."
         )
 
-    # Yangi ovoz kelsa, avvalgi qaror kutilayotgan ovozning o'rnini bosadi
     set_pending_voice(user_id, message.voice.file_id)
 
     await message.answer(
@@ -291,7 +290,7 @@ async def voice_decision(callback: CallbackQuery):
 
 @dp.message()
 async def messages(message: Message):
-    global waiting_id, waiting_name, waiting_delete_id, pending_user_id
+    global waiting_id, waiting_name, waiting_order, waiting_delete_id, pending_user_id, pending_name
 
     if message.from_user.id not in ADMIN_IDS:
         return
@@ -315,15 +314,31 @@ async def messages(message: Message):
         return
 
     if waiting_name:
-        name = message.text.strip()
-        add_user(pending_user_id, name)
+        pending_name = message.text.strip()
+        waiting_name = False
+        waiting_order = True
+        await message.answer(
+            "Ro'yxatda nechanchi o'rinda tursin? (raqam kiriting)\n"
+            "Masalan admin \"5\" desa, bu foydalanuvchi 5-o'rinda turadi."
+        )
+        return
+
+    if waiting_order:
+        try:
+            order = int(message.text.strip())
+        except ValueError:
+            await message.answer("❌ Faqat raqam yuboring")
+            return
+
+        add_user(pending_user_id, pending_name, order)
 
         await message.answer(
-            f"✅ Foydalanuvchi qo'shildi\n\n👤 Ism: {name}\n🆔 {pending_user_id}"
+            f"✅ Foydalanuvchi qo'shildi\n\n👤 Ism: {pending_name}\n🆔 {pending_user_id}\n📍 O'rin: {order}"
         )
 
-        waiting_name = False
+        waiting_order = False
         pending_user_id = None
+        pending_name = None
         return
 
     if waiting_delete_id:
@@ -345,8 +360,6 @@ async def messages(message: Message):
 async def main():
     create_table()
 
-    # Eski/"osilib qolgan" xabarlarni tozalab yuboradi - bot qayta ishga tushganda
-    # avvalgi xabarlarni qayta-qayta qayta ishlab, takrorlanish muammosini oldini oladi
     await bot.delete_webhook(drop_pending_updates=True)
 
     print("Bot ishga tushdi ✅")
